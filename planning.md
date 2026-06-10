@@ -11,6 +11,8 @@
 
 <!-- What domain did you choose? Why is this knowledge valuable and hard to find through official channels? -->
 
+how to start and manage a club at CSUMB
+
 ---
 
 ## Documents
@@ -20,16 +22,16 @@
 
 | # | Source | Description | URL or location |
 |---|--------|-------------|-----------------|
-| 1 | | | |
-| 2 | | | |
-| 3 | | | |
-| 4 | | | |
-| 5 | | | |
-| 6 | | | |
-| 7 | | | |
-| 8 | | | |
-| 9 | | | |
-| 10 | | | |
+| 1 | Student Clubs and Organizations | | https://csumb.edu/seld/clubs-organizations/ |
+| 2 | MyRaft club directory / groups list | | https://myraft.csumb.edu/club_signup?view=all |
+| 3 | Inter-Club Council home page | | https://myraft.csumb.edu/ICC/ |
+| 4 | ICC Useful Links | | https://myraft.csumb.edu/icc/useful-links/ |
+| 5 | ICC Documents | | https://myraft.csumb.edu/icc/documents/ |
+| 6 | ICC Example event page | | https://myraft.csumb.edu/icc/rsvp_boot?id=1959463 |
+| 7 | SCC Handbook Resource / How to Start a Sports Club | | https://myraft.csumb.edu/scc/handbook-resource/ |
+| 8 | SCC Documents | | https://myraft.csumb.edu/scc/documents/ |
+| 9 | Associated Students | | https://csumb.edu/seld/associated-students/ |
+| 10 | Student Engagement and Leadership Development (SELD) | | https://csumb.edu/clubs/register-club-or-organization/?_search=icc+ |
 
 ---
 
