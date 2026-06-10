@@ -4,6 +4,7 @@ CSUMB Student Clubs RAG Pipeline
 
 Sources: 10 CSUMB/MyRaft/ICC/SCC pages (see planning.md)
          + PDFs linked from pages that have a `scrape_pdfs` flag
+         + Local PDFs in ./documents/ (treated as ICC Useful Links sub-docs)
 Chunks:  800–1000 tokens, 100–150 token overlap
 Output:  chunks saved to chunks.json with source metadata
 
@@ -17,6 +18,7 @@ import time
 import requests
 import pdfplumber
 from bs4 import BeautifulSoup
+from pathlib import Path
 
 # ---------------------------------------------------------------------------
 # Sources
@@ -42,6 +44,7 @@ SOURCES = [
         "id": 4,
         "title": "ICC Useful Links",
         "url": "https://myraft.csumb.edu/icc/useful-links/",
+        "local_pdfs": "documents",  # read all PDFs from this local folder
     },
     {
         "id": 5,
@@ -183,12 +186,87 @@ def extract_pdf_text(pdf_url: str) -> str:
     return "\n".join(lines)
 
 
+# ---------------------------------------------------------------------------
+# Token estimation (defined here so PDF helpers below can call it)
+# ---------------------------------------------------------------------------
 
 def estimate_tokens(text: str) -> int:
     """
     Rough token estimate: 1 token ≈ 4 characters (good enough for chunking).
     """
     return len(text) // 4
+
+
+def extract_local_pdf_text(pdf_path: Path) -> str:
+    """
+    Extract text from a local PDF file using pdfplumber.
+    Returns empty string on failure.
+    """
+    try:
+        with pdfplumber.open(pdf_path) as pdf:
+            pages_text = []
+            for page in pdf.pages:
+                text = page.extract_text()
+                if text:
+                    pages_text.append(text)
+            full_text = "\n".join(pages_text)
+    except Exception as e:
+        print(f"    [WARN] Could not parse local PDF {pdf_path.name}: {e}")
+        return ""
+
+    lines = [line.strip() for line in full_text.splitlines()]
+    lines = [line for line in lines if line]
+    return "\n".join(lines)
+
+
+def ingest_local_pdfs(folder: str, source_id: int, source_title: str) -> list[dict]:
+    """
+    Walk `folder`, extract text from every .pdf file found, chunk each one,
+    and return chunk dicts grouped under `source_id` / `source_title`.
+
+    Metadata for each chunk:
+      source_title = "<source_title> — <filename>"
+      source_url   = "local:documents/<filename>"   (no real URL; clearly labelled)
+    """
+    pdf_dir = Path(folder)
+    if not pdf_dir.exists():
+        print(f"  [WARN] Local PDF folder '{folder}' not found — skipping.")
+        return []
+
+    pdf_files = sorted(pdf_dir.glob("*.pdf"))
+    if not pdf_files:
+        print(f"  [WARN] No PDF files found in '{folder}' — skipping.")
+        return []
+
+    print(f"  Found {len(pdf_files)} local PDF(s) in '{folder}'.")
+    all_chunks = []
+
+    for pdf_path in pdf_files:
+        print(f"  Extracting local PDF: {pdf_path.name} ...")
+        text = extract_local_pdf_text(pdf_path)
+        if not text:
+            print(f"    [SKIP] No text extracted.")
+            continue
+
+        token_count = estimate_tokens(text)
+        print(f"    ~{token_count} tokens. Chunking ...")
+        chunks = chunk_text(text)
+        print(f"    → {len(chunks)} chunks.")
+
+        safe_name = pdf_path.stem[:30].replace(" ", "_")
+        for i, chunk in enumerate(chunks):
+            all_chunks.append(
+                {
+                    "chunk_id":     f"src{source_id}_local_{safe_name}_chunk{i}",
+                    "source_id":    source_id,
+                    "source_title": f"{source_title} — {pdf_path.name}",
+                    "source_url":   f"local:documents/{pdf_path.name}",
+                    "text":         chunk,
+                    "token_est":    estimate_tokens(chunk),
+                }
+            )
+
+    return all_chunks
 
 
 def chunk_text(
@@ -315,6 +393,15 @@ def build_chunks(sources: list[dict]) -> list[dict]:
                     )
                 time.sleep(0.5)
 
+        # --- Local PDF folder ingestion ---
+        if source.get("local_pdfs"):
+            local_chunks = ingest_local_pdfs(
+                folder=source["local_pdfs"],
+                source_id=source["id"],
+                source_title=source["title"],
+            )
+            all_chunks.extend(local_chunks)
+
         time.sleep(0.5)  # be polite to CSUMB servers
 
     return all_chunks
@@ -324,7 +411,7 @@ def build_chunks(sources: list[dict]) -> list[dict]:
 # Step 4 — Save to disk
 # ---------------------------------------------------------------------------
 
-def save_chunks(chunks: list[dict], path: str = "documents/chunks.json") -> None:
+def save_chunks(chunks: list[dict], path: str = "chunks.json") -> None:
     with open(path, "w", encoding="utf-8") as f:
         json.dump(chunks, f, indent=2, ensure_ascii=False)
     print(f"\nSaved {len(chunks)} chunks to {path}")
